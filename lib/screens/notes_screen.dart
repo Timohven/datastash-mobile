@@ -160,15 +160,17 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Widget _noteTypeIcon(String noteType) {
-    switch (noteType) {
-      case 'link':
-        return const Icon(Icons.link, color: Colors.blue);
-      case 'photo':
-        return const Icon(Icons.image, color: Colors.green);
-      case 'file':
-        return const Icon(Icons.attach_file, color: Colors.orange);
-      default:
-        return const Icon(Icons.note_alt_outlined, color: Colors.indigo);
-    }
+  switch (noteType) {
+    case 'link':
+      return const Icon(Icons.link,          color: Colors.blue);
+    case 'photo':
+      return const Icon(Icons.image,         color: Colors.green);
+    case 'video':
+      return const Icon(Icons.videocam,      color: Colors.red);
+    case 'file':
+      return const Icon(Icons.attach_file,   color: Colors.orange);
+    default:
+      return const Icon(Icons.note_alt_outlined, color: Colors.indigo);
   }
+}
 }

@@ -29,63 +29,111 @@ class _HomeScreenState extends State<HomeScreen> {
     final username = await AuthService.getUsername();
     setState(() => _username = username);
   }
-
+  
   void _initSharingIntent() {
-    // Приложение уже открыто — пришёл новый Share
-    ReceiveSharingIntent.instance
-        .getMediaStream()
-        .listen((List<SharedMediaFile> files) {
-      for (var file in files) {
-        if (file.type == SharedMediaType.text) {
-          _sendNote(file.path);
-        }
-      }
-    });
+  ReceiveSharingIntent.instance
+      .getMediaStream()
+      .listen((List<SharedMediaFile> files) {
+		if (files.isNotEmpty) {
+		  _handleSharedFiles(files);
+		  // Сбрасываем буфер после обработки
+		  ReceiveSharingIntent.instance.reset();
+		}
+	});
+  ReceiveSharingIntent.instance
+      .getInitialMedia()
+      .then((List<SharedMediaFile> files){
+		if (files.isNotEmpty) {
+		  _handleSharedFiles(files);
+		  // Сбрасываем буфер после обработки
+		  ReceiveSharingIntent.instance.reset();
+		}
+	});
+	}
 
-    // Приложение было закрыто — открылось через Share
-    ReceiveSharingIntent.instance
-        .getInitialMedia()
-        .then((List<SharedMediaFile> files) {
-      for (var file in files) {
-        if (file.type == SharedMediaType.text) {
-          _sendNote(file.path);
-        }
-      }
-    });
-  }
+	void _handleSharedFiles(List<SharedMediaFile> files) {
+	  for (var file in files) {
+			switch (file.type) {
+				case SharedMediaType.text:
+				_sendTextNote(file.path);
+				break;
+				case SharedMediaType.image:
+				_sendFileNote(file.path);
+				break;
+				case SharedMediaType.file:
+				_sendFileNote(file.path);
+				break;
+				case SharedMediaType.video:  // ← добавили
+				_sendFileNote(file.path);
+				break;
+				default:
+				_sendTextNote(file.path);
+			}
+	  }
+	}
 
-  Future<void> _sendNote(String text) async {
-    setState(() => _status = '⏳ Отправляю...');
+	Future<void> _sendTextNote(String text) async {
+	  setState(() => _status = '⏳ Отправляю текст...');
 
-    final token = await AuthService.getToken();
-    if (token == null) {
-      _onTokenExpired();
-      return;
-    }
+	  final token = await AuthService.getToken();
+	  if (token == null) { _onTokenExpired(); return; }
 
-    final success = await NoteService.createNote(
-      token: token,
-      text: text,
-    );
+final username = await AuthService.getUsername();
+print('SEND NOTE — username: $username, token: ${token?.substring(0, 20)}...');
 
-    if (!mounted) return;
+	  // Определяем тип на клиенте примитивно — сервер всё равно перепроверит
+	  final noteType = _detectType(text);
 
-    if (success) {
-      setState(() {
-        _status = '✅ Сохранено';
-        _log.insert(0, text); // добавляем в начало списка
-      });
-    } else {
-      // Возможно токен протух — проверяем
-      final valid = await AuthService.isTokenValid();
-      if (!mounted) return;
-      if (!valid) {
-        _onTokenExpired();
-      } else {
-        setState(() => _status = '❌ Ошибка при сохранении');
-      }
-    }
-  }
+	  final success = await NoteService.createNote(
+			token: token,
+			text: text,
+			noteType: noteType,
+	  );
+
+	  if (!mounted) return;
+	  if (success) {
+			setState(() {
+				_status = '✅ Сохранено ($noteType)';
+				_log.insert(0, '[$noteType] $text');
+			});
+	  } else {
+			setState(() => _status = '❌ Ошибка при сохранении');
+	  }
+	}
+
+	Future<void> _sendFileNote(String filePath) async {
+	  setState(() => _status = '⏳ Загружаю файл...');
+
+	  final token = await AuthService.getToken();
+	  if (token == null) { _onTokenExpired(); return; }
+
+final username = await AuthService.getUsername();
+print('SEND NOTE — username: $username, token: ${token?.substring(0, 20)}...');
+
+	  final success = await NoteService.uploadFile(
+		token: token,
+		filePath: filePath,
+	  );
+
+	  if (!mounted) return;
+	  if (success) {
+			setState(() {
+				_status = '✅ Файл сохранён';
+				_log.insert(0, '[file] $filePath');
+			});
+	  } else {
+			setState(() => _status = '❌ Ошибка при загрузке файла');
+	  }
+	}
+
+	// Примитивное определение типа на клиенте для текста/ссылок
+	String _detectType(String text) {
+	  final urlPattern = RegExp(
+		r'^https?://[\w\-]+(\.[\w\-]+)+([\w.,@?^=%&:/~+#\-_]*)?$',
+		caseSensitive: false,
+	  );
+	  return urlPattern.hasMatch(text.trim()) ? 'link' : 'text';
+	}
 
   // Токен протух — разлогинить и отправить на экран логина
   void _onTokenExpired() {
@@ -97,7 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onLogout() async {
-    await AuthService.logout();
+    ReceiveSharingIntent.instance.reset(); // ← сброс буфера перед выходом
+		await AuthService.logout();
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -112,14 +161,14 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(_username != null ? 'DataStash — $_username' : 'DataStash'),
         actions: [
           IconButton(
-			icon: const Icon(Icons.list),
-			tooltip: 'Мои заметки',
-			onPressed: () => Navigator.push(
-				context,
-				MaterialPageRoute(builder: (_) => const NotesScreen()),
-			),
-			),
-		  IconButton(
+						icon: const Icon(Icons.list),
+						tooltip: 'Мои заметки',
+						onPressed: () => Navigator.push(
+							context,
+							MaterialPageRoute(builder: (_) => const NotesScreen()),
+						),
+					),
+					IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Выйти',
             onPressed: _onLogout,

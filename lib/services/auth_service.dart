@@ -7,7 +7,7 @@ import 'api_config.dart';
 class AuthService {
   static const _storage = FlutterSecureStorage();
   static const _tokenKey = 'jwt_token';
-  static const _usernameKey = 'username';
+	static const _usernameKey = 'username';
 
   // Сохранить токен после логина
   static Future<void> saveToken(String token, String username) async {
@@ -31,13 +31,19 @@ class AuthService {
 
   // Логин через FastAPI
   static Future<String?> login(String username, String password) async {
-    try {
+print('LOGIN CALLED: $username / $password');  // ← самая первая строка   
+	try {
+print('SENDING REQUEST TO: $API_URL/auth/login');
       final response = await http.post(
         Uri.parse('$API_URL/auth/login'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {'username': username, 'password': password},
       );
 
+// Временно — посмотреть что реально отвечает сервер
+print('STATUS: ${response.statusCode}');
+print('BODY: ${response.body}');
+	
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['access_token'];
@@ -46,6 +52,7 @@ class AuthService {
       }
       return null; // неверный логин/пароль
     } catch (e) {
+print('EXCEPTION: $e');  // ← поймает любую ошибку
       return null; // сетевая ошибка
     }
   }

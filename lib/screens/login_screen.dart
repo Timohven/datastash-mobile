@@ -27,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _onLoginPressed() async {
+print('КНОПКА НАЖАТА');  // ← сразу видно вызывается ли вообще
     // Убираем ошибку и показываем спиннер
     setState(() {
       _isLoading = true;
@@ -37,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _usernameController.text.trim(),
       _passwordController.text,
     );
-
+print('token: $token');  // null если логин не прошёл
     if (!mounted) return;
 
     if (token != null) {
