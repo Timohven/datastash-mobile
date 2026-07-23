@@ -10,7 +10,22 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 
 class NoteService {
-  static Future<bool> uploadFile({
+  static Future<bool> deleteNote({
+		required String token,
+		required int noteId,
+	}) async {
+		try {
+			final response = await http.delete(
+				Uri.parse('$API_URL/notes/$noteId'),
+				headers: {'Authorization': 'Bearer $token'},
+			);
+			return response.statusCode == 200;
+		} catch (e) {
+			return false;
+		}
+	}
+	
+	static Future<bool> uploadFile({
 	  required String token,
 	  required String filePath,
 	}) async {
